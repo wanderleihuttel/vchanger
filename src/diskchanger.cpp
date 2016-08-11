@@ -713,7 +713,7 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    tStrip(tRemoveEOL(label_prefix));
    if (label_prefix.empty()) {
       /* Default prefix is storage-name_magazine-number */
-      tFormat(label_prefix, "%s_%d", conf.storage_name.c_str(), bay);
+      tFormat(label_prefix, "%s_%d_", conf.storage_name.c_str(), bay);
    }
    if (start < 0) {
       /* Find highest uniqueness number for this filename prefix */
@@ -724,11 +724,11 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
       start = i;
    }
    for (i = 0; i < count; i++) {
-      tFormat(label, "%s_%d", label_prefix.c_str(), start);
+      tFormat(label, "%s%04d", label_prefix.c_str(), start);
       if (!magazine[bay].empty()) {
          while (magazine[bay].GetVolumeSlot(label) >= 0) {
             ++start;
-            tFormat(label, "%s_%d", label_prefix.c_str(), start);
+            tFormat(label, "%s%04d", label_prefix.c_str(), start);
          }
       }
       fprintf(stdout, "creating label '%s'\n", label.c_str());
