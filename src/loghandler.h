@@ -1,6 +1,6 @@
 /*  loghandler.h
  *
- *  Copyright (C) 2013-2014 Josh Fisher
+ *  Copyright (C) 2013-2018 Josh Fisher
  *
  *  This program is free software. You may redistribute it and/or modify
  *  it under the terms of the GNU General Public License, as published by
@@ -32,6 +32,15 @@
 #include <pthread.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+void LogHandler_write(int level, const char *format, ...);
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
 class LogHandler
 {
 public:
@@ -50,6 +59,7 @@ public:
    void Debug(const char *fmt, ... );
    void MajorDebug(const char *fmt, ... );
    inline bool UsingSyslog() { return use_syslog; }
+   friend void LogHandler_write(int level, const char *format, ...);
 protected:
    void Lock();
    void Unlock();
@@ -64,7 +74,8 @@ protected:
 };
 
 #ifndef LOGHANDLER_SOURCE
-extern LogHandler log;
+extern LogHandler vlog;
+#endif
 #endif
 
 #endif /* _LOGHANDLER_H_ */

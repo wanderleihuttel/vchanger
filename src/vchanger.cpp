@@ -2,7 +2,7 @@
  *
  *  This file is part of the vchanger package
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2020 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -31,6 +31,9 @@
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
+#ifdef HAVE_ERRNO_H
+#include <errno.h>
+#endif
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -53,7 +56,10 @@
 #include "util.h"
 #include "compat_defs.h"
 #include "loghandler.h"
+#include "errhandler.h"
 #include "diskchanger.h"
+#include "mymutex.h"
+#include "bconsole.h"
 
 DiskChanger changer;
 
@@ -80,6 +86,7 @@ typedef struct _cmdparams_s
 {
    bool print_version;
    bool print_help;
+   bool force;
    int command;
    int slot;
    int drive;
@@ -115,12 +122,15 @@ static void print_help(void)
       "    changer defined by vchanger configuration file\n"
       "    'config_file' using 'slot', 'device', and 'drive'\n"
       "  vchanger [options] config_file LISTMAGS\n"
-      "    vchanger extension to list info on all defined magazines.\n"
+      "    API extension to list info on all defined magazines.\n"
       "  vchanger [options] config_file CREATEVOLS mag_ndx count [start] [CREATEVOLS options]\n"
-      "    vchanger extension to create 'count' empty volume files on the magazine at\n"
-      "    index 'mag_ndx'. If specified, 'start' is the lowest integer to use when\n"
+      "    API extension to create 'count' empty volume files on the magazine at\n"
+      "    index 'mag_ndx'. If specified, 'start' is the lowest integer to use in\n"
       "    appending integers to the label prefix when generating volume names.\n"
       "  vchanger [options] config_file REFRESH\n"
+      "    API extension to issue an Update Slots command in bconsole if a change\n"
+      "    in the virtual slot to volume file mapping is detected. The --force flag\n"
+      "    forces the bconsole call regardless detected changes.\n"
       "  vchanger --version\n"
       "    print version info\n"
       "  vchanger --help\n"
@@ -131,13 +141,13 @@ static void print_help(void)
       "\nCREATEVOLS command options:\n"
       "    -l, --label=string   string to use as a prefix for determining the\n"
       "                         barcode label of the volume files created. Labels\n"
-      "                         will be of the form 'string'_N, where N is an\n"
-      "                         integer. By default the prefix will be generated\n"
-      "                         using the changer name and the position of the\n"
-      "                         magazine's declaration in the configuration file.\n"
-      "    --pool=string        Overrides the default pool, defined in the vchanger\n"
-      "                         config file, that new volumes should be placed into\n"
-      "                         when labeling newly created volumes.\n"
+      "                         will be of the form 'string'N, where N is a\n"
+      "                         4 digit integer with leading zeros. The magazine\n"
+      "                         name is used as the prefix string by default.\n"
+      "    --pool=string        Overrides the default pool that new volumes should\n"
+      "                         be placed into when labeling newly created volumes.\n"
+      "\nREFRESH command options:\n"
+      "    --force              Force a bconsole update slots command to be invoked\n"
       "\nReport bugs to %s.\n", PACKAGE_BUGREPORT);
 }
 
@@ -147,6 +157,7 @@ static void print_help(void)
 #define LONGONLYOPT_VERSION   0
 #define LONGONLYOPT_HELP      1
 #define LONGONLYOPT_POOL      2
+#define LONGONLYOPT_FORCE     3
 
 static int parse_cmdline(int argc, char *argv[])
 {
@@ -158,10 +169,12 @@ static int parse_cmdline(int argc, char *argv[])
          { "group", 1, 0, 'g' },
          { "label", 1, 0, 'l' },
          { "pool", 1, 0, LONGONLYOPT_POOL },
+         { "force", 0, 0, LONGONLYOPT_FORCE },
          { 0, 0, 0, 0 } };
 
    cmdl.print_version = false;
    cmdl.print_help = false;
+   cmdl.force = false;
    cmdl.command = 0;
    cmdl.slot = 0;
    cmdl.drive = 0;
@@ -197,6 +210,9 @@ static int parse_cmdline(int argc, char *argv[])
          break;
       case LONGONLYOPT_POOL:
          cmdl.pool = optarg;
+         break;
+      case LONGONLYOPT_FORCE:
+         cmdl.force = true;
          break;
       default:
          fprintf(stderr, "unknown option %s\n", optarg);
@@ -235,6 +251,11 @@ static int parse_cmdline(int argc, char *argv[])
    /* Make sure only CREATEVOLS command has --pool flag */
    if (!cmdl.pool.empty() && cmdl.command != CMD_CREATEVOLS) {
       fprintf(stderr, "flag --pool not valid for this command\n");
+      return -1;
+   }
+   /* Make sure only REFRESH command has --force flag */
+   if (cmdl.force && cmdl.command != CMD_REFRESH) {
+      fprintf(stderr, "flag --force not valid for this command\n");
       return -1;
    }
    /* Check param 3 exists */
@@ -378,7 +399,7 @@ static int do_list_cmd()
          fprintf(stdout, "%d:%s\n", slot, changer.GetVolumeLabel(slot));
       }
    }
-   log.Info("  SUCCESS sent list to stdout");
+   vlog.Info("  SUCCESS sent list to stdout");
    return 0;
 }
 
@@ -390,7 +411,7 @@ static int do_list_cmd()
 static int do_slots_cmd()
 {
    fprintf(stdout, "%d\n", changer.NumSlots());
-   log.Info("  SUCCESS reporting %d slots", changer.NumSlots());
+   vlog.Info("  SUCCESS reporting %d slots", changer.NumSlots());
    return 0;
 }
 
@@ -403,10 +424,10 @@ static int do_load_cmd()
 {
    if (changer.LoadDrive(cmdl.drive, cmdl.slot)) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR loading slot %d into drive %d", cmdl.slot, cmdl.drive);
+      vlog.Error("  ERROR loading slot %d into drive %d", cmdl.slot, cmdl.drive);
       return 1;
    }
-   log.Info("  SUCCESS loading slot %d into drive %d", cmdl.slot, cmdl.drive);
+   vlog.Info("  SUCCESS loading slot %d into drive %d", cmdl.slot, cmdl.drive);
    return 0;
 }
 
@@ -419,10 +440,10 @@ static int do_unload_cmd()
 {
    if (changer.UnloadDrive(cmdl.drive)) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
+      vlog.Error("  ERROR unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
       return 1;
    }
-   log.Info("  SUCCESS unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
+   vlog.Info("  SUCCESS unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
    return 0;
 }
 
@@ -437,9 +458,10 @@ static int do_loaded_cmd()
    int slot = changer.GetDriveSlot(cmdl.drive);
    if (slot < 0) slot = 0;
    fprintf(stdout, "%d\n", slot);
-   log.Info("  SUCCESS reporting drive %d loaded from slot %d", cmdl.drive, slot);
+   vlog.Info("  SUCCESS reporting drive %d loaded from slot %d", cmdl.drive, slot);
    return 0;
 }
+
 
 /*-------------------------------------------------
  *   LISTALL Command
@@ -471,7 +493,7 @@ static int do_list_all()
             fprintf(stdout, "S:%d:E\n", n);
       }
    }
-   log.Info("  SUCCESS sent listall to stdout");
+   vlog.Info("  SUCCESS sent listall to stdout");
    return 0;
 }
 
@@ -487,7 +509,7 @@ static int do_list_magazines()
 
    if (changer.NumMagazines() == 0) {
       fprintf(stdout, "No magazines are defined\n");
-      log.Info("  SUCCESS no magazines are defined");
+      vlog.Info("  SUCCESS no magazines are defined");
       return 0;
    }
    for (n = 0; n < changer.NumMagazines(); n++) {
@@ -498,9 +520,10 @@ static int do_list_magazines()
                changer.GetMagazineStartSlot(n), changer.GetMagazineMountpoint(n));
       }
    }
-   log.Info("  SUCCESS listing magazine info to stdout");
+   vlog.Info("  SUCCESS listing magazine info to stdout");
    return 0;
 }
+
 
 /*-------------------------------------------------
  *   CREATEVOLS (Create Volumes) Command
@@ -511,12 +534,12 @@ static int do_create_vols()
    /* Create new volume files on magazine */
    if (changer.CreateVolumes(cmdl.mag_bay, cmdl.count, cmdl.slot, cmdl.label_prefix.c_str())) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR");
+      vlog.Error("  ERROR: %s", changer.GetErrorMsg());
       return -1;
    }
    fprintf(stdout, "Created %d volume files on magazine %d\n",
            cmdl.count, cmdl.mag_bay);
-   log.Info("  SUCCESS");
+   vlog.Info("  SUCCESS");
    return 0;
 }
 
@@ -529,13 +552,14 @@ int main(int argc, char *argv[])
    int rc;
    FILE *fs = NULL;
    int32_t error_code;
+   void *command_mux = NULL, *bconsole_mux = NULL;
 
 #ifdef HAVE_LOCALE_H
    setlocale(LC_ALL, "");
 #endif
 
    /* Log initially to stderr */
-   log.OpenLog(stderr, LOG_ERR);
+   vlog.OpenLog(stderr, LOG_ERR);
    /* parse the command line */
    if ((error_code = parse_cmdline(argc, argv)) != 0) {
       print_help();
@@ -551,6 +575,7 @@ int main(int argc, char *argv[])
       print_help();
       return 0;
    }
+
    /* Read vchanger config file */
    if (!conf.Read(cmdl.config_file)) {
       return 1;
@@ -573,89 +598,137 @@ int main(int argc, char *argv[])
          fprintf(stderr, "Error opening opening log file\n");
          return 1;
       }
-      log.OpenLog(fs, conf.log_level);
+      vlog.OpenLog(fs, conf.log_level);
    }
    /* Validate and commit configuration parameters */
    if (!conf.Validate()) {
+      fprintf(stderr, "ERROR! configuration file error\n");
       return 1;
    }
 #ifndef HAVE_WINDOWS_H
    /* Ignore SIGPIPE signals */
    signal(SIGPIPE, SIG_IGN);
 #endif
-   /* Initialize changer. A lock file is created to serialize access
+
+   /* Open/create named mutex */
+   command_mux = mymutex_create("vchanger-command");
+   if (command_mux == 0) {
+      vlog.Error("ERROR! failed to create named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to create named mutex errno=%d\n", errno);
+      return 1;
+   }
+   /* Lock mutex to perform command */
+   if (mymutex_lock(command_mux, 300)) {
+      vlog.Error("ERROR! failed to lock named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to lock named mutex errno=%d\n", errno);
+      mymutex_destroy("vchanger-command", command_mux);
+      return 1;
+   }
+
+   /* Initialize changer. A named mutex is created to serialize access
     * to the changer. As a result, changer initialization may block
     * for up to 30 seconds, and may fail if a timeout is reached */
    if (changer.Initialize()) {
+      vlog.Error("%s", changer.GetErrorMsg());
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
+      mymutex_destroy("vchanger-command", command_mux);
       return 1;
    }
 
    /* Perform command */
    switch (cmdl.command) {
    case CMD_LIST:
-      log.Debug("==== preforming LIST command pid=%d", getpid());
+      vlog.Debug("==== preforming LIST command");
       error_code = do_list_cmd();
       break;
    case CMD_SLOTS:
-      log.Debug("==== preforming SLOTS command pid=%d", getpid());
+      vlog.Debug("==== preforming SLOTS command");
       error_code = do_slots_cmd();
       break;
    case CMD_LOAD:
-      log.Debug("==== preforming LOAD command pid=%d", getpid());
+      vlog.Debug("==== preforming LOAD command");
       error_code = do_load_cmd();
       break;
    case CMD_UNLOAD:
-      log.Debug("==== preforming UNLOAD command pid=%d", getpid());
+      vlog.Debug("==== preforming UNLOAD command");
       error_code = do_unload_cmd();
       break;
    case CMD_LOADED:
-      log.Debug("==== preforming LOADED command pid=%d", getpid());
+      vlog.Debug("==== preforming LOADED command");
       error_code = do_loaded_cmd();
       break;
    case CMD_LISTALL:
-      log.Debug("==== preforming LISTALL command pid=%d", getpid());
+      vlog.Debug("==== preforming LISTALL command");
       error_code = do_list_all();
       break;
    case CMD_LISTMAGS:
-      log.Debug("==== preforming LISTMAGS command pid=%d", getpid());
+      vlog.Debug("==== preforming LISTMAGS command");
       error_code = do_list_magazines();
       break;
    case CMD_CREATEVOLS:
-      log.Debug("==== preforming CREATEVOLS command pid=%d", getpid());
+      vlog.Debug("==== preforming CREATEVOLS command");
       error_code = do_create_vols();
       break;
    case CMD_REFRESH:
-      log.Debug("==== preforming REFRESH command pid=%d", getpid());
+      vlog.Debug("==== preforming REFRESH command");
       error_code = 0;
-      log.Info("  SUCCESS pid=%d", getpid());
       break;
    }
-   changer.Unlock();
 
    /* If there was an error, then exit */
-   if (error_code) return error_code;
+   if (error_code) {
+      mymutex_destroy("vchanger-command", command_mux);
+      return error_code;
+   }
 
    /* If not updating Bacula, then exit */
+#ifdef HAVE_WINDOWS_H
+   conf.bconsole = "";  /* Issuing bconsole commands not implemented on Windows */
+#endif
    if (conf.bconsole.empty()) {
       /* Bacula interaction via bconsole is disabled, so log warnings */
       if (changer.NeedsUpdate())
-         log.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
+         vlog.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
       if (changer.NeedsLabel())
-         log.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
+         vlog.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
+      mymutex_destroy("vchanger-command", command_mux);
       return 0;
    }
 
    /* Update Bacula via bconsole */
-#ifndef HAVE_WINDOWS_H
-   changer.UpdateBacula();
-#else
-   /* Auto-update of bacula not working for Windows */
-   if (changer.NeedsUpdate())
-      log.Error("WARNING! 'update slots' needed in bconsole");
-   if (changer.NeedsLabel())
-      log.Error("WARNING! 'label barcodes' needed in bconsole");
-#endif
 
+   /* Create named mutex to prevent further bconsole commands when bconsole
+    * commands have already been initiated */
+   bconsole_mux = mymutex_create("vchanger-bconsole");
+   if (bconsole_mux == 0) {
+      vlog.Error("ERROR! failed to create named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to create named mutex errno=%d\n", errno);
+      mymutex_destroy("vchanger-command", command_mux);
+      return 1;
+   }
+   /* Lock mutex to perform command */
+   if (mymutex_lock(bconsole_mux, 0)) {
+      /* If bconsole mutex is locked because another instance has previously invoked
+       * bconsole, then this instance is the result of bconsole itself invoking
+       * additional vchanger processes to handle the previous instance's bconsole
+       * command. So tto prevent a race condition, this instance must not invoke
+       * further bconsole processes.  */
+      vlog.Info("invoked from bconsole - skipping further bconsole commands", errno);
+      mymutex_destroy("vchanger-bconsole", bconsole_mux);
+      mymutex_destroy("vchanger-command", command_mux);
+      return 0;
+   }
+
+   /* Unlock the command mutex long enough to issue bconsole commands.
+    * Note that the bconsole mutex is left locked to prevent a race condition
+    * should the invoked bconsole process need to invoke additional
+    * instances of vchanger. */
+   mymutex_unlock(command_mux);
+   IssueBconsoleCommands(changer.NeedsUpdate() | cmdl.force, changer.NeedsLabel());
+   mymutex_lock(command_mux, 300);
+
+   /* Cleanup */
+   mymutex_destroy("vchanger-bconsole", command_mux);
+   mymutex_destroy("vchanger-command", bconsole_mux);
    return 0;
 }

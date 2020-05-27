@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2013 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -41,6 +41,7 @@
 #endif
 
 #include "uuidlookup.h"
+#include "loghandler.h"
 
 #ifdef HAVE_WINDOWS_H
 
@@ -230,6 +231,7 @@ static int GetDevMountpoint(char *mountp, size_t mountp_sz, const char *devname)
  */
 static int GetDevMountpoint(char *mountp, size_t mountp_sz, const char *devname)
 {
+   LogHandler_write(LOG_ERROR, "build does not support getmntent() or getfsstat() calls");
    return -1;
 }
 
@@ -256,8 +258,8 @@ int GetMountpointFromUUID(char *mountp, size_t mountp_sz, const char *uuid_str)
    struct udev_list_entry *devices, *dev_list_entry;
    struct udev_device *dev;
    int rc = -3;
-   const char *dev_name, *path, *uuid;
-   size_t n, pos, dev_name_len;
+   const char *dev_name, *dev_links, *path, *uuid;
+   size_t n, pos, dev_links_len;
    char devlink[4096];
 
    if (!mountp || !mountp_sz) return -2;
@@ -280,29 +282,50 @@ int GetMountpointFromUUID(char *mountp, size_t mountp_sz, const char *uuid_str)
          dev_name = udev_device_get_property_value(dev, "DEVNAME");
          if (dev_name == NULL) {
             /* Failed to get kernel device node */
+            LogHandler_write(LOG_DEBUG, "filesystem %s has no udev assigned device node",
+                        uuid_str);
             break;
          }
+         LogHandler_write(LOG_DEBUG, "filesystem %s has udev assigned device %s",
+                           uuid_str, dev_name);
          /* Lookup mountpoint of the kernel device node */
          rc = GetDevMountpoint(mountp, mountp_sz, dev_name);
-         if (rc == 0) break;
-         /* If not mounted as the DEVNAME, also check if mounted as
-          * a device alias name from DEVLINKS */
-         dev_name = udev_device_get_property_value(dev, "DEVLINKS");
-         if (dev_name == NULL) {
-            /* Failed to get device alias links */
+         if (rc == 0) {
+            /* Found mountpoint */
+            LogHandler_write(LOG_DEBUG, "filesystem %s (device %s) mounted at %s", uuid_str, dev_name, mountp);
             break;
          }
-         dev_name_len = strlen(dev_name);
-         pos = 0;
-         while (rc == -4 && pos < dev_name_len) {
-            for (n = pos; n < dev_name_len && !isblank(dev_name[n]); n++) ;
-            n -= pos;
-            memmove(devlink, dev_name + pos, n);
-            devlink[n] = 0;
-            rc = GetDevMountpoint(mountp, mountp_sz, devlink);
-            pos += n;
-            while (pos < dev_name_len && isblank(dev_name[pos])) ++pos;
+         if (rc == -4) {
+            /* If not mounted as the DEVNAME, also check if mounted as
+             * a device alias name from DEVLINKS */
+            dev_links = udev_device_get_property_value(dev, "DEVLINKS");
+            if (dev_links == NULL) {
+               /* No device alias links found */
+               break;
+            }
+            LogHandler_write(LOG_DEBUG, "device %s not found in system mounts, searching all udev device aliases",
+                              dev_name);
+            /* For each device alias, look for a mountpoint */
+            dev_links_len = strlen(dev_links);
+            pos = 0;
+            while (rc == -4 && pos < dev_links_len) {
+               for (n = pos; n < dev_links_len && !isblank(dev_links[n]); n++) ;
+               n -= pos;
+               memmove(devlink, dev_links + pos, n);
+               devlink[n] = 0;
+               rc = GetDevMountpoint(mountp, mountp_sz, devlink);
+               if (rc == 0) {
+                  /* Device alias is mounted */
+                  LogHandler_write(LOG_DEBUG, "filesystem %s (device %s) mounted at %s", uuid_str, devlink,
+                                 mountp);
+                  break;
+               }
+               rc = -4; /* Ignore other errors from attempt to get alias's mountpoint */
+               pos += n;
+               while (pos < dev_links_len && isblank(dev_links[pos])) ++pos;
+            }
          }
+         if (rc == -4) LogHandler_write(LOG_DEBUG, "filesystem %s (device %s) not mounted", uuid_str, dev_name);
          break;
       }
    }
@@ -340,7 +363,11 @@ int GetMountpointFromUUID(char *mountp, size_t mountp_sz, const char *uuid_str)
 #else
    dev_name = blkid_get_devname(NULL, "UUID", uuid_str);
 #endif
-   if (!dev_name) return -3;  /* no device with UUID found */
+   if (!dev_name) {
+      LogHandler_write(LOG_DEBUG, "filesystem %s not found", uuid_str);
+      return -3;
+   }
+   LogHandler_write(LOG_DEBUG, "libblkid found filesystem %s at device %s", uuid_str, dev_name);
 
    /* find mount point for device */
    rc = GetDevMountpoint(mountp, mountp_sz, dev_name);
@@ -355,6 +382,7 @@ int GetMountpointFromUUID(char *mountp, size_t mountp_sz, const char *uuid_str)
  */
 int GetMountpointFromUUID(char *mountp, size_t mountp_sz, const char *uuid_str)
 {
+   LogHandler_write(LOG_DEBUG, "GetMountpointFromUUID: UUID lookups not supported by this build");
    return -1;
 }
 

@@ -3,7 +3,7 @@ VCHANGER.CONF(5)
 Josh Fisher <jfisher@jaybus.com>
 :doctype: manpage
 :man source:   vchanger.conf
-:man version:  1.0.1
+:man version:  1.0.3
 :man manual:   vchanger Manual
 
 NAME
@@ -112,7 +112,7 @@ SEE ALSO
 
 COPYRIGHT
 ---------
-Copyright 2006-2015 Josh Fisher
+Copyright 2006-2020 Josh Fisher
 
 This is free software;
 See the source for copying conditions.

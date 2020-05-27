@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -173,7 +173,7 @@ int MagazineState::save()
 
    if (mag_bay < 0) {
       verr.SetErrorWithErrno(EINVAL, "cannot save state of invalid magazine %d", mag_bay);
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       return EINVAL;
    }
    /* Build path to state file */
@@ -191,7 +191,7 @@ int MagazineState::save()
       rc = errno;
       umask(old_mask);
       verr.SetErrorWithErrno(rc, "cannot open magazine %d state file for writing", mag_bay);
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       return rc;
    }
    /* Save magazine device (directory or UUID), number of volumes, and start of
@@ -203,12 +203,12 @@ int MagazineState::save()
       unlink(sname);
       umask(old_mask);
       verr.SetErrorWithErrno(rc, "cannot write to magazine %d state file", mag_bay);
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       return rc;
    }
    fclose(FS);
    umask(old_mask);
-   log.Notice("saved state of magazine %d", mag_bay);
+   vlog.Notice("saved state of magazine %d", mag_bay);
    return 0;
 }
 
@@ -230,7 +230,7 @@ int MagazineState::restore()
 
    if (mag_bay < 0) {
       verr.SetErrorWithErrno(EINVAL, "cannot restore state of invalid magazine %d", mag_bay);
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       return EINVAL;
    }
    clear();
@@ -250,7 +250,7 @@ int MagazineState::restore()
       /* No read permission? */
       rc = errno;
       verr.SetErrorWithErrno(rc, "cannot open magazine %d state file for reading", mag_bay);
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       return rc;
    }
    if (tGetLine(line, FS) == NULL) {
@@ -259,7 +259,7 @@ int MagazineState::restore()
          /* error reading bay state file */
          fclose(FS);
          verr.SetErrorWithErrno(rc, "error reading magazine %d state file", mag_bay);
-         log.Error("ERROR! %s", verr.GetErrorMsg());
+         vlog.Error("ERROR! %s", verr.GetErrorMsg());
          return rc;
       }
    }
@@ -270,7 +270,7 @@ int MagazineState::restore()
    p = 0;
    if (tParseCSV(word, line, p) <= 0) {
       /* bay state file should not be empty, assume it didn't exist */
-      log.Warning("WARNING! magazine %d state file was empty, deleting it", mag_bay);
+      vlog.Warning("WARNING! magazine %d state file was empty, deleting it", mag_bay);
       unlink(sname);
       return 0;
    }
@@ -285,7 +285,7 @@ int MagazineState::restore()
       /* Bay state file is corrupt.
        * Treat as if it was not mounted at last invocation */
       clear();
-      log.Warning("WARNING! magazine %d state file corrupt, deleting it", mag_bay);
+      vlog.Warning("WARNING! magazine %d state file corrupt, deleting it", mag_bay);
       unlink(sname);
       return 0;
    }
@@ -293,7 +293,7 @@ int MagazineState::restore()
       /* Corrupt bay state file, assume it doesn't exist */
       clear();
       unlink(sname);
-      log.Warning("WARNING! magazine %d state file has invalid number of slots field, deleting it", mag_bay);
+      vlog.Warning("WARNING! magazine %d state file has invalid number of slots field, deleting it", mag_bay);
       return 0;
    }
    prev_num_slots = (int)strtol(word.c_str(), NULL, 10);
@@ -302,7 +302,7 @@ int MagazineState::restore()
       clear();
       prev_num_slots = 0;
       unlink(sname);
-      log.Warning("WARNING! magazine %d state file has invalid number of slots field, deleting it", mag_bay);
+      vlog.Warning("WARNING! magazine %d state file has invalid number of slots field, deleting it", mag_bay);
       return 0;
    }
 
@@ -312,7 +312,7 @@ int MagazineState::restore()
        * Treat as if it was not mounted at last invocation */
       clear();
       prev_num_slots = 0;
-      log.Warning("WARNING! magazine %d state file corrupt, deleting it", mag_bay);
+      vlog.Warning("WARNING! magazine %d state file corrupt, deleting it", mag_bay);
       unlink(sname);
       return 0;
    }
@@ -321,7 +321,7 @@ int MagazineState::restore()
       clear();
       prev_num_slots = 0;
       unlink(sname);
-      log.Warning("WARNING! magazine %d state file has invalid virtual slot assignment field, deleting it",
+      vlog.Warning("WARNING! magazine %d state file has invalid virtual slot assignment field, deleting it",
             mag_bay);
       return 0;
    }
@@ -332,11 +332,11 @@ int MagazineState::restore()
       prev_num_slots = 0;
       prev_start_slot = 0;
       unlink(sname);
-      log.Warning("WARNING! magazine %d state file has invalid virtual slot assignment field, deleting it",
+      vlog.Warning("WARNING! magazine %d state file has invalid virtual slot assignment field, deleting it",
             mag_bay);
       return 0;
    }
-   log.Notice("restored state of magazine %d", mag_bay);
+   vlog.Notice("restored state of magazine %d", mag_bay);
    return 0;
 }
 
@@ -389,7 +389,7 @@ int MagazineState::UpdateMagazineFormat()
          fs = fopen(lname.c_str(), "r");
          if (fs == NULL) {
             verr.SetErrorWithErrno(errno, "failed to find loaded%d file when updating magazine %d", drv, mag_bay);
-            log.Error("ERROR! %s", verr.GetErrorMsg());
+            vlog.Error("ERROR! %s", verr.GetErrorMsg());
             de = readdir(dir);
             continue;
          }
@@ -397,7 +397,7 @@ int MagazineState::UpdateMagazineFormat()
          fclose(fs);
          if (str.empty()) {
             verr.SetError(-1, "loaded%d file empty when updating magazine %d", drv, mag_bay);
-            log.Error("ERROR! %s", verr.GetErrorMsg());
+            vlog.Error("ERROR! %s", verr.GetErrorMsg());
             de = readdir(dir);
             continue;
          }
@@ -406,7 +406,7 @@ int MagazineState::UpdateMagazineFormat()
          if (rename(fname.c_str(), vname.c_str())) {
             verr.SetError(EINVAL, "unable to rename 'drive%d' on magazine %d",
                            drv, mag_bay);
-            log.Error("ERROR! %s", verr.GetErrorMsg());
+            vlog.Error("ERROR! %s", verr.GetErrorMsg());
          }
       }
       de = readdir(dir);
@@ -445,7 +445,7 @@ int MagazineState::UpdateMagazineFormat()
    tFormat(fname, "%s%sindex", mountpoint.c_str(), DIR_DELIM);
    unlink(fname.c_str());
 
-   log.Warning("magaine %d updated from old format", mag_bay);
+   vlog.Warning("magaine %d updated from old format", mag_bay);
    return 0;
 }
 
@@ -494,7 +494,7 @@ int MagazineState::Mount()
       }
       if (rc) {
          verr.SetError(rc, "system error determining mountpoint from UUID");
-         log.Error("ERROR! %s", verr.GetErrorMsg());
+         vlog.Error("ERROR! %s", verr.GetErrorMsg());
          mountpoint.clear();
          return -1;
       }
@@ -510,7 +510,7 @@ int MagazineState::Mount()
    /* Ensure access to magazine mountpoint */
    if (access(mountpoint.c_str(), W_OK) != 0) {
       verr.SetError(rc, "no write access to directory %s", mountpoint.c_str());
-      log.Error("%s", verr.GetErrorMsg());
+      vlog.Error("%s", verr.GetErrorMsg());
       mountpoint.clear();
       return -5;
    }
@@ -529,7 +529,7 @@ int MagazineState::Mount()
       /* could not open mountpoint dir */
       rc = errno;
       verr.SetErrorWithErrno(rc, "cannot open directory '%s'", mountpoint.c_str());
-      log.Error("ERROR! %s", verr.GetErrorMsg());
+      vlog.Error("ERROR! %s", verr.GetErrorMsg());
       mountpoint.clear();
       if (rc == ENOTDIR || rc == ENOENT) return -3;
       if (rc == EACCES) return -5;
@@ -659,7 +659,7 @@ int MagazineState::CreateVolume(const char *vol_label_in)
    }
    if (rc != ENOENT) {
       verr.SetErrorWithErrno(rc, "error %d accessing volumes on magazine %d", rc, mag_bay);
-      log.Error("MagazineState::CreateVolume: %s", verr.GetErrorMsg());
+      vlog.Error("MagazineState::CreateVolume: %s", verr.GetErrorMsg());
       return -1;
    }
    /* Create new volume file on magazine */
@@ -667,7 +667,7 @@ int MagazineState::CreateVolume(const char *vol_label_in)
    if (!fs) {
       rc = errno;
       verr.SetErrorWithErrno(rc, "error %d creating volume on magazine %d", rc, mag_bay);
-      log.Error("MagazineState::CreateVolume: %s", verr.GetErrorMsg());
+      vlog.Error("MagazineState::CreateVolume: %s", verr.GetErrorMsg());
       return -1;
    }
    fclose(fs);
@@ -676,7 +676,7 @@ int MagazineState::CreateVolume(const char *vol_label_in)
    new_mslot.label = label;
    mslot.push_back(new_mslot);
    ++num_slots;
-   log.Notice("created volume '%s' on magazine %d (%s)", label.c_str(), mag_bay, mag_dev.c_str());
+   vlog.Notice("created volume '%s' on magazine %d (%s)", label.c_str(), mag_bay, mag_dev.c_str());
    return 0;
 }
 
@@ -784,7 +784,7 @@ void DynamicConfig::save()
       /* Unable to open dynamic.conf file for writing */
       rc = errno;
       umask(old_mask);
-      log.Error("ERROR! cannot open dynamic.conf file for writing (errno=%d)", rc);
+      vlog.Error("ERROR! cannot open dynamic.conf file for writing (errno=%d)", rc);
       return;
    }
    /* Save max slot number in use to dynamic configuration */
@@ -794,12 +794,12 @@ void DynamicConfig::save()
       fclose(FS);
       unlink(sname);
       umask(old_mask);
-      log.Error("ERROR! i/o error writing dynamic.conf file (errno=%d)", rc);
+      vlog.Error("ERROR! i/o error writing dynamic.conf file (errno=%d)", rc);
       return;
    }
    fclose(FS);
    umask(old_mask);
-   log.Notice("saved dynamic configuration (max used slot: %d)", max_slot);
+   vlog.Notice("saved dynamic configuration (max used slot: %d)", max_slot);
 }
 
 
@@ -827,7 +827,7 @@ void DynamicConfig::restore()
    if (!FS) {
       /* No read permission? */
       rc = errno;
-      log.Error("ERROR! cannot open dynamic.conf file for restore (errno=%d)", rc);
+      vlog.Error("ERROR! cannot open dynamic.conf file for restore (errno=%d)", rc);
       return;
    }
    if (tGetLine(line, FS) == NULL) {
@@ -835,7 +835,7 @@ void DynamicConfig::restore()
       if (!feof(FS)) {
          /* error reading bay state file */
          fclose(FS);
-         log.Error("ERROR! i/o error reading dynamic.conf file (errno=%d)", rc);
+         vlog.Error("ERROR! i/o error reading dynamic.conf file (errno=%d)", rc);
          return;
       }
    }

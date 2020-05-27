@@ -1,0 +1,5 @@
+/var/log/vchanger/*.log {
+    missingok
+    notifempty
+    sharedscripts
+}

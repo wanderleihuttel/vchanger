@@ -1,8 +1,8 @@
-/*  bconsole.h
+/*  semaphore.h
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2017 Josh Fisher
+ *  vchanger copyright (C) 2020 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -21,9 +21,34 @@
  *             Boston,  MA  02111-1307, USA.
 */
 
-#ifndef BCONSOLE_H_
-#define BCONSOLE_H_
+#ifndef _SEMAPHORE_H
+#define _SEMAPHORE_H
 
-void IssueBconsoleCommands(bool update_slots, bool label_barcodes);
+#ifndef HAVE_SEMAPHORE_H
+/* For systems without symlink() function, use internal version */
 
-#endif /* BCONSOLE_H_ */
+typedef union
+{
+  char __size[32];
+  long int __align;
+} sem_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+sem_t* sem_open(const char *name, int oflag, ...);
+int sem_post(sem_t *sem);
+int sem_wait(sem_t *sem);
+int sem_trywait(sem_t *sem);
+int sem_timedwait(sem_t *sem, const struct timespec *abs_timeout);
+int sem_close(sem_t *sem);
+int sem_unlink(const char *name);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+#endif  /* _SEMAPHORE_H */

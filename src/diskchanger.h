@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2020 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -30,13 +30,12 @@
 class DiskChanger
 {
 public:
-   DiskChanger() : changer_lock(NULL), needs_update(false), needs_label(false)  {}
-   virtual ~DiskChanger();
+   DiskChanger() : needs_update(false), needs_label(false)  {}
+   virtual ~DiskChanger() {};
    int Initialize();
    int LoadDrive(int drv, int slot);
    int UnloadDrive(int drv);
    int CreateVolumes(int bay, int count, int start = -1, const char *label_prefix = "");
-   int UpdateBacula();
    const char* GetVolumeLabel(int slot);
    const char* GetVolumePath(tString &fname, int slot);
    bool MagazineEmpty(int bay) const;
@@ -54,8 +53,6 @@ public:
    inline const char* GetErrorMsg() const { return verr.GetErrorMsg(); }
    inline bool NeedsUpdate() const { return needs_update; }
    inline bool NeedsLabel() const { return needs_label; }
-   int Lock(long timeout = 30);
-   void Unlock();
 protected:
    void InitializeMagazines();
    int FindEmptySlotRange(int count);
@@ -67,7 +64,6 @@ protected:
    int SaveDriveState(int drv);
    int RestoreDriveState(int drv);
 protected:
-   FILE *changer_lock;
    bool needs_update;
    bool needs_label;
    ErrorHandler verr;

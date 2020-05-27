@@ -2,12 +2,12 @@
 .\"     Title: vchanger
 .\"    Author: Josh Fisher <jfisher@jaybus.com>
 .\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
-.\"      Date: 06/03/2015
+.\"      Date: 05/11/2020
 .\"    Manual: vchanger Manual
-.\"    Source: vchanger 1.0.1
+.\"    Source: vchanger 1.0.3
 .\"  Language: English
 .\"
-.TH "VCHANGER" "8" "06/03/2015" "vchanger 1\&.0\&.1" "vchanger Manual"
+.TH "VCHANGER" "8" "05/11/2020" "vchanger 1\&.0\&.3" "vchanger Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -40,7 +40,7 @@ vchanger \- Virtual disk\-based autochanger for Bacula network backup system
 \fBvchanger\fR [\fIOptions\fR] config REFRESH
 .SH "DESCRIPTION"
 .sp
-The \fBvchanger(8)\fR utility is used to emulate and control a virtual autochanger within the Bacula network backup system environment\&. Backup volumes stored on multiple disk filesystems are mapped to a single set of virtual slots, allowing an unlimited number of virtual drives for concurrent backup jobs and easy, unlimited scaling to any size by simply adding additional disks/filesystems,
+The \fBvchanger(8)\fR utility is used to emulate and control a virtual autochanger within the Bacula network backup system environment\&. Backup volumes stored on multiple disk filesystems are mapped to a single set of virtual slots\&. This allows an unlimited number of virtual drives and an unlimited number of virtual slots spread across an unlimited number of physical disk drives to be assigned to a single autochanger\&. This allows unlimited scaling of the cirtual autochanger simply by adding additional disk drives\&.
 .sp
 Vchanger is primarily deigned for use with removable disk drives\&. Its ability to interact with Bacula and determine removable drive mount points through udev allow for plug\-n\-play operation when attaching and detaching removable disk drives\&.
 .sp
@@ -142,9 +142,9 @@ command to Bacula if required\&.
 .sp
 \fBBacula Interaction\fR
 .sp
-By default, vcahgner will invoke bconsole and issue commands to Bacula when certain operator actions are needed\&. When anything happens that changes the current set of volume files being used, vchanger will invoke bconsole and issue an \fIupdate slots\fR command\&. For example, when the operator attaches a removable drive defined as one of the changer\(cqs magazines, the volume files on the removable drive must be mapped to virtual slots\&. Since the volume\-to\-slot mapping will have changed, Bacula will need to be informed of the change via the \fIupdate slots\fR command\&. The \fBREFRESH\fR command can be invoked to force vchanger to update state info and trigger \fIupdate slots\fR if needed\&.
+By default, vcahgner will invoke bconsole and issue commands to Bacula when certain operator actions are needed\&. When anything happens that changes the current set of volume files being used, (the virtual slot to volume file mapping), vchanger will invoke bconsole and issue an \fIupdate slots\fR command\&. For example, when the operator attaches a removable drive defined as one of the changer\(cqs magazines, the volume files on the removable drive must be mapped to virtual slots\&. Since the slot\-to\-volume mapping will have changed, Bacula will need to be informed of the change via the \fIupdate slots\fR command\&. The \fBREFRESH\fR command can be invoked to force vchanger to update state info and trigger \fIupdate slots\fR if needed\&.
 .sp
-Additionally, when new volumes are created with the \fBCREATEVOLS\fR command, vchanger will invoke bconsole and issue a \fIlabel barcodes\fR command to write volume labels on the newly created volume files\&.
+Additionally, when new volumes are created with the \fBCREATEVOLS\fR command, vchanger will invoke bconsole and issue a \fIlabel barcodes\fR command to allow Bacula to write volume labels on the newly created volume files\&.
 .SH "COMMAND LINE OPTIONS"
 .PP
 \fB\-u, \-\-user\fR=\fIuid\fR
@@ -195,7 +195,7 @@ See the vchangerHowto\&.html file included in the doc directory of the source di
 \fBvchanger\&.conf(5)\fR
 .SH "COPYRIGHT"
 .sp
-Copyright 2006\-2015 Josh Fisher
+Copyright 2006\-2020 Josh Fisher
 .sp
 This is free software; See the source for copying conditions\&. There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\&.
 .SH "AUTHOR"

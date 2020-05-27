@@ -3,7 +3,7 @@ VCHANGER(8)
 Josh Fisher <jfisher@jaybus.com>
 :doctype: manpage
 :man source:   vchanger
-:man version:  1.0.1
+:man version:  1.0.3
 :man manual:   vchanger Manual
 
 NAME
@@ -27,9 +27,11 @@ DESCRIPTION
 The *vchanger(8)* utility is used to emulate and control a virtual
 autochanger within the Bacula network backup system environment.
 Backup volumes stored on multiple disk filesystems are mapped to a
-single set of virtual slots, allowing an unlimited number of virtual
-drives for concurrent backup jobs and easy, unlimited scaling to any
-size by simply adding additional disks/filesystems, 
+single set of virtual slots. This allows an unlimited number of
+virtual drives and an unlimited number of virtual slots spread
+across an unlimited number of physical disk drives to be assigned
+to a single autochanger. This allows unlimited scaling of the cirtual
+autochanger simply by adding additional disk drives. 
 
 Vchanger is primarily deigned for use with removable disk drives. Its
 ability to interact with Bacula and determine removable drive mount
@@ -115,18 +117,19 @@ Additionally, the following extended commands are supported.
 
 By default, vcahgner will invoke bconsole and issue commands to Bacula
 when certain operator actions are needed. When anything happens that
-changes the current set of volume files being used, vchanger will
-invoke bconsole and issue an 'update slots' command. For example,
-when the operator attaches a removable drive defined as one of the
-changer's magazines, the volume files on the removable drive must be
-mapped to virtual slots. Since the volume-to-slot mapping will have
-changed, Bacula will need to be informed of the change via the
-'update slots' command. The *REFRESH* command can be invoked to force
-vchanger to update state info and trigger 'update slots' if needed.
+changes the current set of volume files being used, (the virtual slot
+to volume file mapping), vchanger will invoke bconsole and issue an
+'update slots' command. For example, when the operator attaches a
+removable drive defined as one of the changer's magazines, the volume
+files on the removable drive must be mapped to virtual slots. Since
+the slot-to-volume mapping will have changed, Bacula will need to be
+informed of the change via the 'update slots' command. The *REFRESH*
+command can be invoked to force vchanger to update state info and
+trigger 'update slots' if needed.
 
 Additionally, when new volumes are created with the *CREATEVOLS* command,
 vchanger will invoke bconsole and issue a 'label barcodes' command to
-write volume labels on the newly created volume files.
+allow Bacula to write volume labels on the newly created volume files.
 
 COMMAND LINE OPTIONS
 --------------------
@@ -172,7 +175,7 @@ SEE ALSO
 
 COPYRIGHT
 ---------
-Copyright 2006-2015 Josh Fisher
+Copyright 2006-2020 Josh Fisher
 
 This is free software;
 See the source for copying conditions.

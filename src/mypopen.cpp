@@ -179,7 +179,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
    /* Build argv array from command line string */
    if (mypopen_args(cline, argv, argc, argbuf, sizeof(argbuf))) {
       /* Invalid args, so terminate child */
-      log.Debug("popen: invalid cmdline args for child");
+      vlog.Debug("popen: invalid cmdline args for child");
       errno = EINVAL;
       return -1;
    }
@@ -193,7 +193,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             /* error creating pipe */
             return -1;
          }
-         log.Debug("popen: child stdin uses pipe (%d -> %d)", pipe_in[0], pipe_in[1]);
+         vlog.Debug("popen: child stdin uses pipe (%d -> %d)", pipe_in[0], pipe_in[1]);
       } else if (*fno_stdin == STDIN_FILENO) {
          /* Caller specified stdin so just let child inherit it */
          fno_stdin = NULL;
@@ -212,7 +212,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             errno = rc;
             return -1;
          }
-         log.Debug("popen: child stdout uses pipe (%d -> %d)", pipe_out[0], pipe_out[1]);
+         vlog.Debug("popen: child stdout uses pipe (%d -> %d)", pipe_out[0], pipe_out[1]);
       } else {
          if (*fno_stdout == STDOUT_FILENO) fno_stdout = NULL;
          else fsync(*fno_stdout);
@@ -231,7 +231,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             errno = rc;
             return -1;
          }
-         log.Debug("popen: child stderr uses pipe (%d -> %d)", pipe_err[0], pipe_err[1]);
+         vlog.Debug("popen: child stderr uses pipe (%d -> %d)", pipe_err[0], pipe_err[1]);
       } else {
          if (*fno_stderr == STDERR_FILENO) fno_stderr = NULL;
          else fsync(*fno_stderr);
@@ -239,7 +239,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
    }
 
    /* fork a child process to run the command in */
-   log.Debug("popen: forking now");
+   vlog.Debug("popen: forking now");
    pid = fork();
    switch (pid)
    {
@@ -251,7 +251,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
 
    case 0: /* child is running */
       /* close pipe ends always used by parent */
-      log.Debug("popen: child closing pipe ends %d,%d,%d used by parent", pipe_in[1], pipe_out[0], pipe_err[0]);
+      vlog.Debug("popen: child closing pipe ends %d,%d,%d used by parent", pipe_in[1], pipe_out[0], pipe_err[0]);
       if (pipe_in[1] >= 0) close(pipe_in[1]);
       if (pipe_out[0] >= 0) close(pipe_out[0]);
       if (pipe_err[0] >= 0) close(pipe_err[0]);
@@ -259,7 +259,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
       if (fno_stdin) {
          if (*fno_stdin < 0) {
             /* Read end of pipe will be child's stdin */
-            log.Debug("popen: child will read stdin from %d", pipe_in[0]);
+            vlog.Debug("popen: child will read stdin from %d", pipe_in[0]);
             dup2(pipe_in[0], STDIN_FILENO);
             close(pipe_in[0]);
          } else {
@@ -272,7 +272,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
       if (fno_stdout) {
          if (*fno_stdout < 0) {
             /* Write end of pipe will be child's stdout */
-            log.Debug("popen: child will write stdout to %d", pipe_out[1]);
+            vlog.Debug("popen: child will write stdout to %d", pipe_out[1]);
             dup2(pipe_out[1], STDOUT_FILENO);
             close(pipe_out[1]);
          } else {
@@ -285,7 +285,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
       if (fno_stderr) {
          if (*fno_stderr < 0) {
             /* Write end of pipe will be child's stderr */
-            log.Debug("popen: child will write stderr to %d", pipe_err[1]);
+            vlog.Debug("popen: child will write stderr to %d", pipe_err[1]);
             dup2(pipe_err[1], STDERR_FILENO);
             close(pipe_err[1]);
          } else {
@@ -295,7 +295,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
          }
       }
       /* now run the command */
-      log.Debug("popen: child executing '%s'", argv[0]);
+      vlog.Debug("popen: child executing '%s'", argv[0]);
       execvp(argv[0], argv);
       /* only gets here if execvp fails */
       return -1;
@@ -304,7 +304,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
    /* parent is running this */
 
    /* close pipe ends always used by child */
-   log.Debug("popen: parent closing pipe ends %d,%d,%d used by child", pipe_in[0], pipe_out[1], pipe_err[1]);
+   vlog.Debug("popen: parent closing pipe ends %d,%d,%d used by child", pipe_in[0], pipe_out[1], pipe_err[1]);
    if (pipe_in[0] >= 0) close(pipe_in[0]);
    if (pipe_out[1] >= 0) close(pipe_out[1]);
    if (pipe_err[1] >= 0) close(pipe_err[1]);
@@ -314,25 +314,25 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
       if (*fno_stdin < 0) {
          /* Caller will be writing to child's stdin through pipe */
          *fno_stdin = pipe_in[1];
-         log.Debug("popen: parent writes child's stdin to %d", pipe_in[1]);
+         vlog.Debug("popen: parent writes child's stdin to %d", pipe_in[1]);
       }
    }
    if (fno_stdout) {
       if (*fno_stdout < 0) {
          /* Caller will be reading from child's stdout through pipe */
          *fno_stdout = pipe_out[0];
-         log.Debug("popen: parent reads child's stdout from %d", pipe_out[0]);
+         vlog.Debug("popen: parent reads child's stdout from %d", pipe_out[0]);
       }
    }
    if (fno_stderr) {
       if (*fno_stderr < 0) {
          /* Caller will be reading from child's stderr through pipe */
          *fno_stderr = pipe_err[0];
-         log.Debug("popen: parent reads child's stderr from %d", pipe_err[0]);
+         vlog.Debug("popen: parent reads child's stderr from %d", pipe_err[0]);
       }
    }
    //sleep(2);
-   log.Debug("popen: parent returning pid=%d of child", pid);
+   vlog.Debug("popen: parent returning pid=%d of child", pid);
    return pid;
 }
 
@@ -360,7 +360,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
    /* Build argv array from command line string */
    if (mypopen_args(cline, argv, argc, argbuf, sizeof(argbuf))) {
       /* Invalid args, so terminate child */
-      log.Debug("popen: invalid cmdline args for child");
+      vlog.Debug("popen: invalid cmdline args for child");
       errno = EINVAL;
       return -1;
    }
@@ -375,7 +375,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             return -1;
          }
          child_in = pipe_in[0];
-         log.Debug("popen: child stdin uses pipe (%d -> %d)", pipe_in[0], pipe_in[1]);
+         vlog.Debug("popen: child stdin uses pipe (%d -> %d)", pipe_in[0], pipe_in[1]);
       } else {
          if (*fno_stdin != STDIN_FILENO) {
             /* Caller supplied an open file to use as child's stdin */
@@ -397,7 +397,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             return -1;
          }
          child_out = pipe_out[1];
-         log.Debug("popen: child stdout uses pipe (%d -> %d)", pipe_out[0], pipe_out[1]);
+         vlog.Debug("popen: child stdout uses pipe (%d -> %d)", pipe_out[0], pipe_out[1]);
       } else {
          if (*fno_stdout != STDOUT_FILENO) {
             /* Caller supplied open file to use as child's stdout */
@@ -419,7 +419,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
             return -1;
          }
          child_err = pipe_err[1];
-         log.Debug("popen: child stderr uses pipe (%d -> %d)", pipe_err[0], pipe_err[1]);
+         vlog.Debug("popen: child stderr uses pipe (%d -> %d)", pipe_err[0], pipe_err[1]);
       } else {
          if (*fno_stderr != STDERR_FILENO) {
             /* Caller supplied an open file to use as child's stderr */
@@ -547,7 +547,7 @@ static int do_mypopen_raw(const char *cline, int *fno_stdin, int *fno_stdout, in
    if (pipe_out[0] >= 0) *fno_stdout = pipe_out[0];
    if (pipe_err[0] >= 0) *fno_stderr = pipe_err[0];
 
-   log.Debug("popen: parent returning pid=%d of child", pid);
+   vlog.Debug("popen: parent returning pid=%d of child", pid);
    return pid;
 }
 

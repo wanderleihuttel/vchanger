@@ -1,6 +1,9 @@
 #
-#  Spec file for vchanger - RHEL 6
+#  Spec file for vchanger - Fedora 29
 #
+
+%global debug_package %{nil}
+
 Summary: A virtual autochanger for Bacula
 Name: vchanger
 Version: 1.0.3
@@ -12,7 +15,10 @@ URL: http://vchanger.sourceforge.net
 Vendor: Josh Fisher.
 Packager: Josh Fisher <jfisher@jaybus.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Requires(post): /bin/mkdir, /bin/chown, /usr/bin/getent, /usr/sbin/useradd, /usr/sbin/groupadd
+Requires(post): /usr/bin/mkdir, /usr/bin/chown, /usr/bin/getent, /usr/sbin/useradd, /usr/sbin/groupadd
+
+# For libudev support
+BuildRequires: systemd-devel
 
 %description
 Vchanger implements a virtual autochanger for use with the Bacula open source
@@ -89,7 +95,9 @@ fi
 
 %changelog
 * Thu May 6 2020 Josh Fisher <jfisher@jaybus.com>
-- Updated to release 1.0.2
+- Updated to release 1.0.3
+* Mon Dec 24 2018 Steven A. Falco <stevenfalco@gmail.com>
+- Various changes for Fedora 29
 * Thu Jun 14 2018 Josh Fisher <jfisher@jaybus.com>
 - Updated to release 1.0.2
 * Wed Jun 3 2015 Josh Fisher <jfisher@jaybus.com>

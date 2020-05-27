@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2014 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -65,6 +65,7 @@ extern char DEFAULT_STATEDIR[4096];
 #else
 char DEFAULT_LOGDIR[4096];
 char DEFAULT_STATEDIR[4096];
+VchangerConfig conf;
 #endif
 
 #endif /* _VCONF_H_ */

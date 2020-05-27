@@ -1,5 +1,26 @@
 vchanger ChangeLog
 
+1.0.3 (2020-05-06)
+  - Redesign locking mechanism for multiple instances using POSIX
+    semaphores.
+  - Use at, rather than nohup, in scripts invoked by udev rules to fix
+    nohup not working as expected on some platforms.
+    (Patch from Steven A. Falco)
+  - Add spec file for Fedora 29 (Provided by Steven A. Falco)
+  - Correct number of slots reported by SIZE command (Fixes bug 17)
+  - Rename logging variables that conflict with cmath's log function (Fixes bug 18)
+1.0.2  (2018-06-14)
+  - Use named mutex to prevent instances of vchanger invoked by Bacula during
+    a bconsole call from initiating further bconsole calls. Prevents a race
+    condition caused by the need for Bacula to invoke additional instances of
+    vchanger when vchanger invokes bconsole to issue 'update slots' and
+    'label barcodes' commands. (Fixes bug 15)
+  - Prevent load command from loading the same virtual slot into more than
+    one virtual drive. (Fixes bug 13)
+  - Fix bconsole update slots command needs drive to be specified. [Patch
+    from Bill Arlofski] (Fixes bug 14)
+  - Improve generated volume label format. [Patch from Wanderlei Huttel]
+  - Additional logging to help debug udev/UUID assignment problems
 1.0.1  (2015-06-09)
   - When looking up the mountpoint of a magazine by UUID with libudev,
     also look for mountpoint of device alias names in DEVLINKS in addition

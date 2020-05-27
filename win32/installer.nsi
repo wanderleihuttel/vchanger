@@ -1,5 +1,5 @@
 #................-
-#. Date of creation: 2015-06-01
+#. Date of creation: 2020-05-06
 #. Name: installer.nsi
 #................-
 #..- Package parameters ...
@@ -9,7 +9,15 @@ SetCompressor lzma
 !include MUI2.nsh
 !include WinMessages.nsh
 !include x64.nsh
-!insertmacro MUI_LANGUAGE English
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "license.txt"
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_LANGUAGE "English"
+
 #... Installation Windows Parameters ..
 !define APPNAME "vchanger"
 !define COMPANYNAME "Josh Fisher"
@@ -17,20 +25,20 @@ SetCompressor lzma
 # These three must be integers
 !define VERSIONMAJOR 1
 !define VERSIONMINOR 0
-!define VERSIONBUILD 1
+!define VERSIONBUILD 3
 # These will be displayed by the "Click here for support information" link in "Add/Remove Programs"
 !define HELPURL "http://sourceforge.net/projects/vchanger/" # "Support Information" link
-Name "vchanger 1.0.1"
-VIProductVersion "1.0.1.0"
+Name "vchanger 1.0.3"
+VIProductVersion "1.0.3.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "vchanger Installer"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright (c) Josh Fisher 2008-2015"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright (c) Josh Fisher 2008-2020"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "vchanger Windows Installer"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "1.0.1"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "1.0.3"
 ShowInstDetails nevershow
 SilentInstall normal
 RequestExecutionLevel admin
 AutoCloseWindow True
-OutFile "vchanger-1.0.1.exe"
+OutFile "vchanger-1.0.3.exe"
 
 PageEx license
   LicenseData "license.txt"
@@ -121,13 +129,13 @@ Function .onInit
   SetShellVarContext all
   #Determine the bitness of the OS and enable the correct section
   ${If} ${RunningX64}
-    SectionSetFlags SEC0001  ${SECTION_OFF}
-    SectionSetFlags SEC0002  ${SF_SELECTED}
+    SectionSetFlags ${SEC0001}  ${SECTION_OFF}
+    SectionSetFlags ${SEC0002}  ${SF_SELECTED}
     StrCpy $INSTDIR "$PROGRAMFILES64\vchanger"
     SetRegView 64
   ${Else}
-    SectionSetFlags SEC0002  ${SECTION_OFF}
-    SectionSetFlags SEC0001  ${SF_SELECTED}
+    SectionSetFlags ${SEC0002}  ${SECTION_OFF}
+    SectionSetFlags ${SEC0001}  ${SF_SELECTED}
     StrCpy $INSTDIR "$PROGRAMFILES32\vchanger"
     SetRegView 32
   ${EndIf}

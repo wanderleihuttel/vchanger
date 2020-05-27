@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  vchanger-umount-uuid.sh ( vchanger v.1.0.1 ) 2015-06-03
+#  vchanger-umount-uuid.sh ( vchanger v.1.0.3 ) 2020-05-06
 #
 #  This script is used to unmount the filesystem having the
 #  UUID specified in parameter 1. The mountpoint path

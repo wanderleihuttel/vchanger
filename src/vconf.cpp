@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2014 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -45,26 +45,21 @@
 #include <sys/stat.h>
 #endif
 #ifdef HAVE_WINDOWS_H
-#include "targetver.h"
 #include <windows.h>
+#endif
+#ifdef HAVE_SHLOBJ_H
 #include <shlobj.h>
+#endif
+#ifdef HAVE_DIRECT_H
 #include <direct.h>
-#define DIR_DELIM "\\"
-#define DIR_DELIM_C '\\'
-#define MAG_VOLUME_MASK 0
-#else
-#define DIR_DELIM "/"
-#define DIR_DELIM_C '/'
-#define MAG_VOLUME_MASK S_IWGRP|S_IRWXO
 #endif
 
+#include "compat_defs.h"
 #include "loghandler.h"
 #include "util.h"
 #define __VCONF_SOURCE 1
 #include "vconf.h"
 
-/* Global configuration object */
-VchangerConfig conf;
 
 /*-------------------------------------------
  * Config file keywords and defaults
@@ -145,19 +140,19 @@ bool VchangerConfig::Read(const char *cfile)
 
    tmp_ini.ClearKeywordValues();
    if (!cfile || !cfile[0]) {
-      log.Error("config file not specified");
+      vlog.Error("config file not specified");
       return false;
    }
    /* Does config file exist */
    if (access(cfile, R_OK)) {
-      log.Error("could not access config file %s", cfile);
+      vlog.Error("could not access config file %s", cfile);
       return false;
    }
    /* Read config file values */
    rc = tmp_ini.Read(cfile);
    if (rc) {
-      if (rc > 0) log.Error("Parse error in %s at line %d", cfile, rc);
-      else log.Error("could not open config file  %s", cfile);
+      if (rc > 0) vlog.Error("Parse error in %s at line %d", cfile, rc);
+      else vlog.Error("could not open config file  %s", cfile);
       return false;
    }
    /* Update keyword values */
@@ -168,7 +163,7 @@ bool VchangerConfig::Read(const char *cfile)
       storage_name = (const char*)keyword[VK_STORAGE_NAME];
       tStrip(storage_name);
       if (storage_name.empty()) {
-         log.Error("config file keyword '%s' must specify a non-empty string", VK_STORAGE_NAME);
+         vlog.Error("config file keyword '%s' must specify a non-empty string", VK_STORAGE_NAME);
          return false;
       }
       /* Update defaults for this changer name */
@@ -181,7 +176,7 @@ bool VchangerConfig::Read(const char *cfile)
       work_dir = (const char*)keyword[VK_WORK_DIR];
       tStrip(work_dir);
       if (work_dir.empty()) {
-         log.Error("config file keyword '%s' must specify a non-empty string", VK_WORK_DIR);
+         vlog.Error("config file keyword '%s' must specify a non-empty string", VK_WORK_DIR);
          return false;
       }
    }
@@ -191,7 +186,7 @@ bool VchangerConfig::Read(const char *cfile)
       logfile = (const char*)keyword[VK_LOGFILE];
       tStrip(logfile);
       if (logfile.empty()) {
-         log.Error("config file keyword '%s' must specify a non-empty string", VK_LOGFILE);
+         vlog.Error("config file keyword '%s' must specify a non-empty string", VK_LOGFILE);
          return false;
       }
    }
@@ -200,7 +195,7 @@ bool VchangerConfig::Read(const char *cfile)
    if (keyword[VK_LOG_LEVEL].IsSet()) {
       log_level = (int)keyword[VK_LOG_LEVEL];
       if (log_level < 0 || log_level > 7) {
-         log.Error("config file keyword '%s' must specify a value between 0 and 7 inclusive", VK_LOG_LEVEL);
+         vlog.Error("config file keyword '%s' must specify a value between 0 and 7 inclusive", VK_LOG_LEVEL);
          return false;
       }
    }
@@ -210,7 +205,7 @@ bool VchangerConfig::Read(const char *cfile)
       user = (const char*)keyword[VK_USER];
       tStrip(user);
       if (user.empty()) {
-         log.Error("keyword '%s' value cannot be empty", VK_USER);
+         vlog.Error("keyword '%s' value cannot be empty", VK_USER);
          return false;
       }
    }
@@ -220,7 +215,7 @@ bool VchangerConfig::Read(const char *cfile)
       group = (const char*)keyword[VK_GROUP];
       tStrip(group);
       if (group.empty()) {
-         log.Error("keyword '%s' value cannot be empty", VK_GROUP);
+         vlog.Error("keyword '%s' value cannot be empty", VK_GROUP);
          return false;
       }
    }
@@ -242,7 +237,7 @@ bool VchangerConfig::Read(const char *cfile)
       def_pool = (const char*)keyword[VK_DEF_POOL];
       tStrip(def_pool);
       if (def_pool.empty()) {
-         log.Error("keyword '%s' value cannot be empty", VK_DEF_POOL);
+         vlog.Error("keyword '%s' value cannot be empty", VK_DEF_POOL);
          return false;
       }
    }
@@ -252,13 +247,13 @@ bool VchangerConfig::Read(const char *cfile)
       magazine = keyword[VK_MAGAZINE];
    }
    if (magazine.empty()) {
-      log.Error("config file keyword '%s' must appear at least once", VK_MAGAZINE);
+      vlog.Error("config file keyword '%s' must appear at least once", VK_MAGAZINE);
       return false;
    }
    for (n = 0; n < (int)magazine.size(); n++) {
       tStrip(magazine[n]);
       if (magazine[n].empty()) {
-         log.Error("config file keyword '%s' cannot be set to the empty string", VK_MAGAZINE);
+         vlog.Error("config file keyword '%s' cannot be set to the empty string", VK_MAGAZINE);
          return false;
       }
    }
@@ -283,13 +278,13 @@ bool VchangerConfig::Validate()
 #else
          if (_mkdir(work_dir.c_str())) {
 #endif
-            log.Error("could not create work directory '%s'", work_dir.c_str());
+            vlog.Error("could not create work directory '%s'", work_dir.c_str());
             umask(old_mask);
             return false;
          }
          umask(old_mask);
       } else {
-         log.Error("could not access work directory '%s'", work_dir.c_str());
+         vlog.Error("could not access work directory '%s'", work_dir.c_str());
          return false;
       }
    }
@@ -299,7 +294,7 @@ bool VchangerConfig::Validate()
    if (!bconsole_config.empty()) {
       if (access(bconsole_config.c_str(), R_OK)) {
          /* If bconsole config doesn't exist or is not readable, disable use of bconsole */
-         log.Warning("cannot read bconsole config file. Disabling Bacula interaction.");
+         vlog.Warning("cannot read bconsole config file. Disabling Bacula interaction.");
          bconsole.clear();
          bconsole_config.clear();
       }
