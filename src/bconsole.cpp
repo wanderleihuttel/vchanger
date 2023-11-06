@@ -187,8 +187,9 @@ void IssueBconsoleCommands(bool update_slots, bool label_barcodes)
       tFormat(cmd, "update slots storage=\"%s\" drive=\"0\"", conf.storage_name.c_str());
       if(issue_bconsole_command(cmd.c_str())) {
          vlog.Error("WARNING! 'update slots' needed in bconsole");
+      } else {
+          vlog.Info("bconsole update slots command success");
       }
-      vlog.Info("bconsole update slots command success");
    }
 
    /* Perform label barcodes command in bconsole */
@@ -197,8 +198,9 @@ void IssueBconsoleCommands(bool update_slots, bool label_barcodes)
             conf.def_pool.c_str());
       if (issue_bconsole_command(cmd.c_str())) {
          vlog.Error("WARNING! 'label barcodes' needed in bconsole");
+      } else {
+          vlog.Info("bconsole label barcodes command success");
       }
-      vlog.Info("bconsole label barcodes command success");
    }
 }
 
