@@ -638,39 +638,39 @@ int main(int argc, char *argv[])
    /* Perform command */
    switch (cmdl.command) {
    case CMD_LIST:
-      vlog.Debug("==== preforming LIST command");
+      vlog.Debug("==== performing LIST command");
       error_code = do_list_cmd();
       break;
    case CMD_SLOTS:
-      vlog.Debug("==== preforming SLOTS command");
+      vlog.Debug("==== performing SLOTS command");
       error_code = do_slots_cmd();
       break;
    case CMD_LOAD:
-      vlog.Debug("==== preforming LOAD command");
+      vlog.Debug("==== performing LOAD command");
       error_code = do_load_cmd();
       break;
    case CMD_UNLOAD:
-      vlog.Debug("==== preforming UNLOAD command");
+      vlog.Debug("==== performing UNLOAD command");
       error_code = do_unload_cmd();
       break;
    case CMD_LOADED:
-      vlog.Debug("==== preforming LOADED command");
+      vlog.Debug("==== performing LOADED command");
       error_code = do_loaded_cmd();
       break;
    case CMD_LISTALL:
-      vlog.Debug("==== preforming LISTALL command");
+      vlog.Debug("==== performing LISTALL command");
       error_code = do_list_all();
       break;
    case CMD_LISTMAGS:
-      vlog.Debug("==== preforming LISTMAGS command");
+      vlog.Debug("==== performing LISTMAGS command");
       error_code = do_list_magazines();
       break;
    case CMD_CREATEVOLS:
-      vlog.Debug("==== preforming CREATEVOLS command");
+      vlog.Debug("==== performing CREATEVOLS command");
       error_code = do_create_vols();
       break;
    case CMD_REFRESH:
-      vlog.Debug("==== preforming REFRESH command");
+      vlog.Debug("==== performing REFRESH command");
       error_code = 0;
       break;
    }
